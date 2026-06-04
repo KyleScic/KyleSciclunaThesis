@@ -1,96 +1,206 @@
-# Streaming Automatic Speech Recognition for Maltese
-
-
-
-
-## Repository structure
-
-```
-maltese-streaming-asr/
-├── README.md
-├── notebooks/                          # 1. Fine-tuning (training)
-│   ├── Whisper_Medium_Retrain_v2.ipynb
-│   ├── MMS_1B_all_Retrain_v2.ipynb
-│   └── SeamlessM4T_v2_Large_Retrain_v2.ipynb
-├── streaming/                          # 2. Streaming evaluation
-│   ├── whisper_streaming_eval.py
-│   ├── mms_streaming.py
-│   ├── seamless_streaming.py
-│   └── whisper_online.py
-├── models/                             # 3. LoRA adapters + configs + per-model metrics
-│   ├── whisper-medium-mlt/
-│   ├── mms-1b-all-mlt/
-│   └── seamless-m4t-v2-large-mlt/
-├── results/                            # 4. Evaluation outputs
-│   ├── offline/
-│   └── streaming/
-└── data/                               # 6. Corpus metadata (inputs)
-    └── streaming_metadata.csv
-```
-
+---
+base_model: facebook/seamless-m4t-v2-large
+library_name: peft
+tags:
+- base_model:adapter:facebook/seamless-m4t-v2-large
+- lora
+- transformers
 ---
 
-## 1. Fine-tuning files (`notebooks/`)
+# Model Card for Model ID
 
-Each notebook performs the complete per-model adaptation pipeline on Google Colab (NVIDIA T4): data preparation → LoRA attachment → zero-shot baseline on the test set → training with early stopping on validation WER → final test-set evaluation → save merged checkpoint. All three share the same structure (sections 1–8) and the same architecture-agnostic settings; they differ only in the architecture-specific hyperparameters.
-
-| File | Model | Architecture | LoRA targets | LR / warm-up / epochs / patience |
-|---|---|---|---|---|
-| `Whisper_Medium_Retrain_v2.ipynb` | Whisper-Medium (~769 M) | Seq2Seq (enc–dec) | `q_proj`, `v_proj` | 1e-3 / 50 / 15 / 3 |
-| `MMS_1B_all_Retrain_v2.ipynb` | MMS-1B-all (~1.0 B) | Encoder + CTC | `q_proj`, `v_proj`, **+ `lm_head`** | 1e-3 / 100 / 25 / 5 |
-| `SeamlessM4T_v2_Large_Retrain_v2.ipynb` | SeamlessM4T v2-Large (~1.5 B, S2T) | Seq2Seq (enc–dec) | `q_proj`, `v_proj` | 1e-5 / 100 / 20 / 5 |
-
-Common to all three: LoRA r = 32, α = 64, dropout 0.05; effective batch size 32 (FP16, gradient checkpointing); AdamW; best checkpoint selected on validation WER; global seed 42. MMS additionally trains its Maltese classification head (`modules_to_save=["lm_head"]`) and disables SpecAugment (`mask_time_prob = mask_feature_prob = 0`); Whisper and Seamless force Maltese generation tokens at inference.
-
-## 2. Streaming evaluation files (`streaming/`)
-
-Real-time inference on the streaming corpus, run locally (NVIDIA RTX 3050). Each script uses the streaming protocol matched to its architecture and writes both per-clip and per-word CSVs.
-
-| File | Purpose |
-|---|---|
-| `whisper_streaming_eval.py` | Whisper streaming under **LocalAgreement-2** (commits a word when two consecutive growing-buffer decodes agree). Uses `faster-whisper` / CTranslate2 via the `whisper_online` library. |
-| `mms_streaming.py` | MMS streaming under a **growing-buffer CTC** protocol; per-word commit times recovered post-hoc by longest-common-prefix analysis across chunk decodes. |
-| `seamless_streaming.py` | Seamless streaming under **per-chunk independent decoding** (each 2 s chunk decoded as a standalone short utterance; the only protocol that avoids the model's early-EOS / hallucination failure modes). |
-| `whisper_online.py` | Upstream `ufal/whisper_streaming` reference implementation (`OnlineASRProcessor`, `FasterWhisperASR`), imported by `whisper_streaming_eval.py`. Third-party dependency, included for reproducibility. |
-
-Shared streaming settings (for fair cross-model comparison): 2.0 s chunks, greedy decoding (beam = 1), FP16, VAD disabled.
+<!-- Provide a quick summary of what the model is/does. -->
 
 
 
-## 3. Model artifacts (`models/<model>/`)
+## Model Details
 
-Each model folder contains the trained LoRA adapter, its configuration, the tokeniser/processor, and the evaluation metrics. File names repeat across folders, so they are kept in per-model subdirectories.
+### Model Description
 
-| File | Description |
-|---|---|
-| `adapter_config.json` | PEFT/LoRA configuration (rank, α, dropout, target modules, base model). |
-| `adapter_model.safetensors` | Trained LoRA adapter weights (and `lm_head` for MMS). |
-| `*Training.bin` / `training_args.bin` | Serialised `TrainingArguments` (LR, batch, epochs, warm-up, FP16, seed, …). |
-| `tokenizer.json`, `tokenizer_config.json` | Tokeniser. For MMS, `target_lang = mlt`; for Whisper, `language = maltese`, `task = transcribe`. |
-| `vocab.json` | (MMS only) per-language CTC character vocabulary; the `mlt` entry includes ċ, ġ, ħ, ż, apostrophe, hyphen. |
-| `preprocessor_config.json`, `processor_config.json` | Feature extractor (16 kHz; log-Mel for Seq2Seq, raw waveform for MMS). |
-| `zero_shot_test_metrics*.json` | Test-set metrics **before** LoRA training (zero-shot baseline). |
-| `final_test_metrics*.json` | Test-set metrics **after** training, including best epoch. |
-| `README.md` | Hugging Face model-card stub (auto-generated by PEFT; fill in before publishing an adapter). |
-
-
-## 4. Data (`data/`)
-
-| File | Description |
-|---|---|
-| `streaming_metadata.csv` | Input manifest for the streaming scripts: `clip_id, clip_path, reference, duration_sec`. Describes the 58 long-form clips built by concatenating ~9 same-speaker test utterances with 400 ms silences. |
-
-The MASRI-HEADSET v2 audio corpus itself is **not** redistributed here; obtain it from the original source.
-
----
+<!-- Provide a longer summary of what this model is. -->
 
 
 
-### Environment
+- **Developed by:** [More Information Needed]
+- **Funded by [optional]:** [More Information Needed]
+- **Shared by [optional]:** [More Information Needed]
+- **Model type:** [More Information Needed]
+- **Language(s) (NLP):** [More Information Needed]
+- **License:** [More Information Needed]
+- **Finetuned from model [optional]:** [More Information Needed]
 
-- Training: Python 3, PyTorch, `transformers`, `datasets`, `peft` (0.19.1), `jiwer`, NVIDIA T4 (Colab).
-- Streaming: as above plus `faster-whisper` / `CTranslate2` (Whisper only), `librosa`, NVIDIA RTX 3050.
+### Model Sources [optional]
 
----
+<!-- Provide the basic links for the model. -->
+
+- **Repository:** [More Information Needed]
+- **Paper [optional]:** [More Information Needed]
+- **Demo [optional]:** [More Information Needed]
+
+## Uses
+
+<!-- Address questions around how the model is intended to be used, including the foreseeable users of the model and those affected by the model. -->
+
+### Direct Use
+
+<!-- This section is for the model use without fine-tuning or plugging into a larger ecosystem/app. -->
+
+[More Information Needed]
+
+### Downstream Use [optional]
+
+<!-- This section is for the model use when fine-tuned for a task, or when plugged into a larger ecosystem/app -->
+
+[More Information Needed]
+
+### Out-of-Scope Use
+
+<!-- This section addresses misuse, malicious use, and uses that the model will not work well for. -->
+
+[More Information Needed]
+
+## Bias, Risks, and Limitations
+
+<!-- This section is meant to convey both technical and sociotechnical limitations. -->
+
+[More Information Needed]
+
+### Recommendations
+
+<!-- This section is meant to convey recommendations with respect to the bias, risk, and technical limitations. -->
+
+Users (both direct and downstream) should be made aware of the risks, biases and limitations of the model. More information needed for further recommendations.
+
+## How to Get Started with the Model
+
+Use the code below to get started with the model.
+
+[More Information Needed]
+
+## Training Details
+
+### Training Data
+
+<!-- This should link to a Dataset Card, perhaps with a short stub of information on what the training data is all about as well as documentation related to data pre-processing or additional filtering. -->
+
+[More Information Needed]
+
+### Training Procedure
+
+<!-- This relates heavily to the Technical Specifications. Content here should link to that section when it is relevant to the training procedure. -->
+
+#### Preprocessing [optional]
+
+[More Information Needed]
 
 
+#### Training Hyperparameters
+
+- **Training regime:** [More Information Needed] <!--fp32, fp16 mixed precision, bf16 mixed precision, bf16 non-mixed precision, fp16 non-mixed precision, fp8 mixed precision -->
+
+#### Speeds, Sizes, Times [optional]
+
+<!-- This section provides information about throughput, start/end time, checkpoint size if relevant, etc. -->
+
+[More Information Needed]
+
+## Evaluation
+
+<!-- This section describes the evaluation protocols and provides the results. -->
+
+### Testing Data, Factors & Metrics
+
+#### Testing Data
+
+<!-- This should link to a Dataset Card if possible. -->
+
+[More Information Needed]
+
+#### Factors
+
+<!-- These are the things the evaluation is disaggregating by, e.g., subpopulations or domains. -->
+
+[More Information Needed]
+
+#### Metrics
+
+<!-- These are the evaluation metrics being used, ideally with a description of why. -->
+
+[More Information Needed]
+
+### Results
+
+[More Information Needed]
+
+#### Summary
+
+
+
+## Model Examination [optional]
+
+<!-- Relevant interpretability work for the model goes here -->
+
+[More Information Needed]
+
+## Environmental Impact
+
+<!-- Total emissions (in grams of CO2eq) and additional considerations, such as electricity usage, go here. Edit the suggested text below accordingly -->
+
+Carbon emissions can be estimated using the [Machine Learning Impact calculator](https://mlco2.github.io/impact#compute) presented in [Lacoste et al. (2019)](https://arxiv.org/abs/1910.09700).
+
+- **Hardware Type:** [More Information Needed]
+- **Hours used:** [More Information Needed]
+- **Cloud Provider:** [More Information Needed]
+- **Compute Region:** [More Information Needed]
+- **Carbon Emitted:** [More Information Needed]
+
+## Technical Specifications [optional]
+
+### Model Architecture and Objective
+
+[More Information Needed]
+
+### Compute Infrastructure
+
+[More Information Needed]
+
+#### Hardware
+
+[More Information Needed]
+
+#### Software
+
+[More Information Needed]
+
+## Citation [optional]
+
+<!-- If there is a paper or blog post introducing the model, the APA and Bibtex information for that should go in this section. -->
+
+**BibTeX:**
+
+[More Information Needed]
+
+**APA:**
+
+[More Information Needed]
+
+## Glossary [optional]
+
+<!-- If relevant, include terms and calculations in this section that can help readers understand the model or model card. -->
+
+[More Information Needed]
+
+## More Information [optional]
+
+[More Information Needed]
+
+## Model Card Authors [optional]
+
+[More Information Needed]
+
+## Model Card Contact
+
+[More Information Needed]
+### Framework versions
+
+- PEFT 0.19.1
