@@ -1,0 +1,10 @@
+{
+  "final_test_loss": 2.2717740535736084,
+  "final_test_model_preparation_time": 0.0263,
+  "final_test_wer": 0.29343037732235205,
+  "final_test_cer": 0.09223616922361692,
+  "final_test_runtime": 497.5608,
+  "final_test_samples_per_second": 1.001,
+  "final_test_steps_per_second": 0.5,
+  "epoch": 9.0
+}
